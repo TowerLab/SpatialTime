@@ -5,11 +5,8 @@ library(Hmisc)
 library(jsonlite)
 library(monocle)
 
-# Import dataset ----
-fracture <- readRDS("R/fracture_original_annotation.rds")
-is(fracture, "Seurat")
-Idents(fracture)
-
+load_all()
+devtools::check()
 
 #' @file - Seurat Object
 #' @cluster - cluster names in Idents
@@ -61,13 +58,6 @@ subsetLabels <- function(file = "", cluster = NULL, export.all = T,
   }
 }
 
-# if "export.all = T", then "cluster" parameter is not necessary
-subsetLabels("R/fracture_original_annotation.rds", cluster = c("MarrowFibrin", "Periosteum", "Cortical"),
-             slice.n = "slice1", export.all = T, dir.out = "R/excel/") # Add error handling for terms that do not exist or poorly written
-
-
-
-################################## WORKING #####################################
 subsetLabels <- function(file = "", cluster = NULL, export.all = TRUE,
                          slice.n = "slice1", dir.out = "") {
 
@@ -105,9 +95,6 @@ subsetLabels <- function(file = "", cluster = NULL, export.all = TRUE,
               file.path(dir.out, "all_coordinates.csv"))
   }
 }
-
-subsetLabels("R/fracture_original_annotation.rds", cluster = c("MarrowFibrin", "Periosteum", "Cortical"),
-             slice.n = "slice1", export.all = T, dir.out = "R/excel/")
 
 #' @file - Fiji file
 #' @factor - scale factor
@@ -161,10 +148,6 @@ SpatialTime <- function(file = "", id = NULL) {
   return(st_calc)
 }
 
-# Calculate SpatialTime ----
-sp <- SpatialTime("R/excel/all_coordinates.csv", id = "MarrowFibrin")
-View(sp)
-
 
 #' @file - Seurat object
 #' @st.calc - Spatialtime values
@@ -198,23 +181,6 @@ SpatialVis <- function(file = NULL, st.calc = NULL, spatial.by = c("abs", "rel")
   SpatialFeaturePlot(file, features = "st", images = slice)
 
 }
-
-vis <- SpatialVis(fracture, sp, spatial.by = "rel", return_obj = T)
-View(vis@meta.data)
-
-
-# Add module scores ----
-osteo <- c("Alpl","Bglap","Bglap2","Col1a1","Col1a2","Dmp1","Ibsp","Mef2c","Postn",
-           "Runx2","Sp7","Sparc","Phex","Satb2","Pth1r","Ostn","Car3")
-
-angio <- c("Cdh5","Ddit3","S1pr1","Ankrd17","Lyl1","Mmp2","Reck","Acvrl1")
-
-gene_modules <- list(Module1 = osteo, Module2 = angio)
-module <- AddModuleScore(vis, features = gene_modules, assay = "SCT", name = "cluster")
-View(module@meta.data)
-
-
-#saveRDS(vis, "fracture_original_annotation_to_monocle.rds")
 
 #' @file - Seurat object with module annotation
 #' @assay - Seurat Assay
@@ -260,38 +226,6 @@ PseudoTime <- function(file = NULL, assay = "RNA", min_expr = 0.1, min_cells = 2
   return(file)
 }
 
-ps <- PseudoTime(file = module, assay = "SCT", min_expr = 0.1, min_cells = 5, mean_expr = 0.1) # vis
-View(ps@meta.data)
-
-
-# Get specific gene expression values
-gene1 <- FetchData(ps, vars = "PDGFRA")
-ps$PDGFRA <- gene1
-
-gene2 <- FetchData(ps, vars = "HBA1")
-ps$HBA1 <- gene2
-View(ps@meta.data)
-
-gene3 <- FetchData(ps, vars = "SOX9")
-ps$SOX9 <- gene3
-View(ps@meta.data)
-
-
-# Visualization ----
-ggplot(ps@meta.data) +
-  geom_smooth(aes(st, HBA1, color = "HBA1"), method = "loess", span = 1.5, se = FALSE) +
-  geom_smooth(aes(st, PDGFRA, color = "PDGFRA"), method = "loess", span = 1.5, se = FALSE) +
-  geom_smooth(aes(st, SOX9, color = "SOX9"), method = "loess", span = 1.5, se = FALSE) +
-  scale_color_manual(values = c("HBA1" = "#999999", "PDGFRA" = "#E69F00", "sox9" = "#56B4E9")) +
-  theme_classic()
-
-ggplot(ps@meta.data) +
-  geom_smooth(aes(st, cluster1, color = "cluster1"), method = "loess", span = 1.5, se = FALSE) +
-  theme_classic()
-
-
-
-################################################################################
 
 GeneVis <- function(data = NULL, genes = NULL, colors = NULL, st = NULL, span = NULL, se = FALSE) {
 
@@ -311,44 +245,3 @@ GeneVis <- function(data = NULL, genes = NULL, colors = NULL, st = NULL, span = 
 
   return(data)
 }
-
-ds <- GeneVis(ps, genes = c("HBA1","PDGFRA","SOX9"))
-View(ds@meta.data)
-
-genes <- c("HBA1","PDGFRA","SOX9")
-class(genes)
-
-ds <- ds@meta.data %>%
-  select(st, all_of(genes))
-
-m <- melt(metadata, id.vars = "st")
-View(m)
-
-ggplot(m, aes(st,value, col=variable)) +
-  geom_smooth(span = 1.5, se = FALSE) +
-  theme_classic()
-
-s <-
-  "A       B        C       G       Xax
-0.451   0.333   0.034   0.173   0.22
-0.491   0.270   0.033   0.207   0.34
-0.389   0.249   0.084   0.271   0.54
-0.425   0.819   0.077   0.281   0.34
-0.457   0.429   0.053   0.386   0.53
-0.436   0.524   0.049   0.249   0.12
-0.423   0.270   0.093   0.279   0.61
-0.463   0.315   0.019   0.204   0.23
-"
-d <- read.delim(textConnection(s), sep="")
-
-library(ggplot2)
-library(reshape2)
-d <- melt(d, id.vars="Xax")
-
-# Everything on the same plot
-ggplot(d, aes(Xax,value, col=variable)) +
-  geom_point() +
-  stat_smooth()
-
-View(metadata)
-SpatialFeaturePlot(ps, features = "cluster2")
