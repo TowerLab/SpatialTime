@@ -8,6 +8,10 @@ library(jsonlite)
 library(monocle)
 library(fs)
 
+
+usethis::use_test("subsetLabels")
+devtools::test()
+
 # Import dataset ----
 #vis <- readRDS("D10_young_DRG_mapped_stvalues.rds")
 #View(fracture@meta.data)

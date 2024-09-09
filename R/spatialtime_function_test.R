@@ -4,10 +4,14 @@ library(tidyverse)
 library(Hmisc)
 library(jsonlite)
 library(monocle)
+library(devtools)
+library(testthat)
+library(usethis)
+library(pkgdown)
 
+pkgdown::build_site()
+usethis::use_pkgdown_github_pages()
 
-devtools::check()
-load_all()
 # Import dataset ----
 fracture <- readRDS("R/fracture_original_annotation.rds")
 is(fracture, "Seurat")
@@ -202,7 +206,7 @@ SpatialVis <- function(file = NULL, st.calc = NULL, spatial.by = c("abs", "rel")
 
 }
 
-vis <- SpatialVis(fracture, sp, spatial.by = "rel", return_obj = T)
+vis <- SpatialVis(fracture, sp, spatial.by = c("rel"), return_obj = T)
 View(vis@meta.data)
 
 
